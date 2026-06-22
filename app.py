@@ -43,7 +43,7 @@ if uploaded_file and business_desc and api_key:
         with st.spinner("جاري عصر الدماغ وكتابة الفلسفة... ⏳"):
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel("gemini-1.5-flash")
+                model = genai.GenerativeModel("gemini-pro")
 
                 colors_str = ", ".join(
                     [f"{c['name']} ({c['hex']})" for c in data["colors"]]
