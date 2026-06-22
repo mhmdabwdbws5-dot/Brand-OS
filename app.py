@@ -2,48 +2,50 @@ import json
 import google.generativeai as genai
 import streamlit as st
 
-# إعداد مظهر الصفحة
 st.set_page_config(
-    page_title="Brand OS - المُفكّر", page_icon="🧠", layout="centered"
+    page_title="Brand OS - المُفكّر v2", page_icon="🧠", layout="centered"
 )
 
-st.title("🧠 Brand OS: المُفكّر (صانع المحتوى)")
-st.markdown(
-    "ارفع ملف الـ `meta.json` اللي طلّعه الإلستريتور، واكتب سطرين على نشاط البراند، وخلي الذكاء الاصطناعي يكتبلك الدليل."
-)
+st.title("🧠 Brand OS: المُفكّر (الإصدار المطور)")
+st.markdown("تم تفعيل **كاشف الموديلات التلقائي** لتجاوز أخطاء الاتصال بقوقل.")
 
-# 1. خانة مفتاح الـ API
+# 1. إدخال المفتاح
 api_key = st.text_input(
-    "أدخل مفتاح Gemini API الخاص بك:",
-    type="password",
-    placeholder="AIzaSy...",
-    help="تقدر تطلعه مجاناً من Google AI Studio",
+    "أدخل مفتاح Gemini API:", type="password", placeholder="AIzaSy..."
 )
 
-# 2. رفع ملف الميتا
+# 2. كشف الموديلات المتاحة للمفتاح تلقائياً (X-Ray)
+available_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+if api_key:
+    try:
+        genai.configure(api_key=api_key)
+        # جلب الموديلات الحقيقية من حسابك
+        live_models = [
+            m.name.replace("models/", "")
+            for m in genai.list_models()
+            if "generateContent" in m.supported_generation_methods
+        ]
+        if live_models:
+            available_models = live_models
+    except Exception as e:
+        st.error(f"⚠️ المفتاح فيه مشكلة أو غير مفعّل: {e}")
+
+selected_model = st.selectbox(
+    "اختر الموديل (هذه هي الموديلات المتاحة لمفتاحك فعلياً):",
+    available_models,
+)
+
+# 3. رفع الملف والوصف
 uploaded_file = st.file_uploader("ارفع ملف meta.json هنا:", type=["json"])
-
-# 3. وصف النشاط
-business_desc = st.text_area(
-    "شنو نشاط هالبراند؟",
-    placeholder="مثال: مطعم مأكولات بحرية فاخر في طرابلس، يستهدف العائلات ورجال الأعمال، يتميز بالأكل الطازج.",
-    height=100,
-)
+business_desc = st.text_area("شنو نشاط هالبراند؟", placeholder="اكتب هنا...")
 
 if uploaded_file and business_desc and api_key:
-    # قراءة الجسون
     data = json.load(uploaded_file)
 
-    st.success(f"تم قراءة بيانات البراند: **{data['brand_name']}**")
-
-    with st.expander("معاينة البيانات المسحوبة من الإلستريتور"):
-        st.json(data)
-
     if st.button("✨ صياغة دليل الهوية البصرية الآن", type="primary"):
-        with st.spinner("جاري عصر الدماغ وكتابة الفلسفة... ⏳"):
+        with st.spinner(f"جاري الاتصال بموديل {selected_model}... ⏳"):
             try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel("gemini-pro")
+                model = genai.GenerativeModel(selected_model)
 
                 colors_str = ", ".join(
                     [f"{c['name']} ({c['hex']})" for c in data["colors"]]
@@ -84,4 +86,6 @@ if uploaded_file and business_desc and api_key:
                 st.write(response.text)
 
             except Exception as e:
-                st.error(f"صار خطأ في الاتصال: {e}")
+                st.error(
+                    f"فشل الاتصال بهذا الموديل، جرب اختر واحد ثاني من القائمة فوق! (السبب التقني: {e})"
+                )
